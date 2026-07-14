@@ -362,7 +362,7 @@
         const s = snapS.val() || 1;
         const e = snapE.val() || 100;
         const updates = {
-          'tokens/lastNumber': 0,
+          'tokens/lastNumber': e,
           'currentCall/number': 0, 'currentCall/counter': 0,
           'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
           'tokens/waitingList': null
@@ -370,14 +370,10 @@
         Object.keys(countersConfig).forEach(id => {
           updates['counters/' + id] = { number: 0, status: 'idle' };
         });
+        for (let i = s; i <= e; i++) {
+          updates['tokens/waitingList/r' + i] = i;
+        }
         db.ref().update(updates).then(() => {
-          const listUpdates = {};
-          for (let i = s; i <= e; i++) {
-            listUpdates['tokens/waitingList/r' + i] = i;
-          }
-          listUpdates['tokens/lastNumber'] = e;
-          return db.ref().update(listUpdates);
-        }).then(() => {
           showToast('تم التصفير والبدء من جديد: ' + s + ' - ' + e, 'success');
         });
       }).catch(() => showToast('حدث خطأ', 'error'));
@@ -407,13 +403,12 @@
           const now = new Date();
           const today = now.toISOString().slice(0, 10);
           if (now.getHours() >= hour && lastDate !== today) {
-            db.ref('settings/lastAutoResetDate').set(today);
             db.ref('settings/numberStart').once('value').then(sS => {
               db.ref('settings/numberEnd').once('value').then(sE => {
                 const s = sS.val() || 1;
                 const e = sE.val() || 100;
                 const updates = {
-                  'tokens/lastNumber': 0,
+                  'tokens/lastNumber': e,
                   'currentCall/number': 0, 'currentCall/counter': 0,
                   'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
                   'tokens/waitingList': null
@@ -421,14 +416,11 @@
                 Object.keys(countersConfig).forEach(id => {
                   updates['counters/' + id] = { number: 0, status: 'idle' };
                 });
-                db.ref().update(updates).then(() => {
-                  const listUpdates = {};
-                  for (let i = s; i <= e; i++) {
-                    listUpdates['tokens/waitingList/r' + i] = i;
-                  }
-                  listUpdates['tokens/lastNumber'] = e;
-                  db.ref().update(listUpdates);
-                });
+                for (let i = s; i <= e; i++) {
+                  updates['tokens/waitingList/r' + i] = i;
+                }
+                updates['settings/lastAutoResetDate'] = today;
+                db.ref().update(updates);
               });
             });
           }

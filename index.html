@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Cairo', sans-serif; }
+    body { background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
+
+    .sidebar {
+      position: fixed; top: 0; right: 0; width: 260px; height: 100vh;
+      background: rgba(15,15,40,0.95); border-left: 1px solid rgba(255,215,0,0.15);
+      padding: 1.5rem 0; z-index: 100; overflow-y: auto;
+    }
+    .sidebar-brand { text-align: center; padding: 0 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 1rem; }
+    .sidebar-brand h2 { font-size: 1.3rem; font-weight: 800; color: #ffd700; margin: 0; }
+    .sidebar-brand p { font-size: 0.8rem; color: #666688; margin: 0.3rem 0 0; }
+    .sidebar-menu { list-style: none; padding: 0 0.5rem; }
+    .sidebar-menu li { margin-bottom: 0.3rem; }
+    .sidebar-menu a {
+      display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem;
+      color: #8888aa; text-decoration: none; border-radius: 10px; transition: all 0.2s; font-weight: 600;
+    }
+    .sidebar-menu a:hover, .sidebar-menu a.active { background: rgba(255,215,0,0.1); color: #ffd700; }
+    .sidebar-menu a .icon { font-size: 1.2rem; width: 24px; text-align: center; }
+
+    .main-content { margin-right: 260px; padding: 1.5rem 2rem; min-height: 100vh; }
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.8rem; font-weight: 800; color: #fff; }
+    .page-header p { color: #666688; margin: 0; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden;
+    }
+    .stat-card::before { content:''; position:absolute; top:0; right:0; width:4px; height:100%; }
+    .stat-card.gold::before { background: #ffd700; }
+    .stat-card.green::before { background: #4ecca3; }
+    .stat-card.blue::before { background: #3498db; }
+    .stat-card.red::before { background: #e74c3c; }
+    .stat-card .stat-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .stat-card .stat-number { font-size: 2.5rem; font-weight: 900; line-height: 1; }
+    .stat-card.gold .stat-number { color: #ffd700; }
+    .stat-card.green .stat-number { color: #4ecca3; }
+    .stat-card.blue .stat-number { color: #3498db; }
+    .stat-card.red .stat-number { color: #e74c3c; }
+    .stat-card .stat-label { font-size: 0.9rem; color: #8888aa; margin-top: 0.3rem; }
+
+    .section-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.5rem; }
+    .section-header h3 { font-size: 1.2rem; font-weight: 700; color: #fff; }
+
+    .table-dark-custom { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .table-dark-custom th {
+      background: rgba(255,215,0,0.1); color: #ffd700; font-weight: 700;
+      font-size: 0.9rem; padding: 0.8rem 1rem; text-align: right;
+      border-bottom: 1px solid rgba(255,215,0,0.2);
+    }
+    .table-dark-custom td { padding: 0.7rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+    .badge-number { background: rgba(255,215,0,0.15); color: #ffd700; padding: 0.3rem 0.8rem; border-radius: 8px; font-weight: 700; font-size: 1rem; }
+
+    .btn-action {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; font-family: 'Cairo', sans-serif; font-weight: 600; font-size: 0.85rem;
+      padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-action:hover { background: rgba(255,255,255,0.15); }
+    .btn-action.danger { border-color: rgba(231,76,60,0.3); color: #e74c3c; }
+    .btn-action.danger:hover { background: rgba(231,76,60,0.15); }
+
+    .btn-reset {
+      background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; color: #fff;
+      font-family: 'Cairo', sans-serif; font-weight: 700; padding: 0.6rem 1.5rem;
+      border-radius: 10px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;
+    }
+    .btn-reset:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(231,76,60,0.3); }
+
+    .btn-save {
+      background: linear-gradient(135deg, #4ecca3, #36b37e); border: none; color: #fff;
+      font-family: 'Cairo', sans-serif; font-weight: 700; padding: 0.6rem 1.8rem;
+      border-radius: 10px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(78,204,163,0.3); }
+
+    .btn-fill {
+      background: linear-gradient(135deg, #ffd700, #e6b800); border: none; color: #0a0a23;
+      font-family: 'Cairo', sans-serif; font-weight: 700; padding: 0.6rem 1.8rem;
+      border-radius: 10px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;
+    }
+    .btn-fill:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(255,215,0,0.3); }
+
+    .current-call-display { text-align: center; padding: 2rem; }
+    .current-call-display .big-number { font-size: 5rem; font-weight: 900; color: #ffd700; line-height: 1; text-shadow: 0 0 20px rgba(255,215,0,0.3); }
+    .current-call-display .counter-info { font-size: 1.5rem; color: #4ecca3; font-weight: 700; margin-top: 0.5rem; }
+    .current-call-display .no-call { font-size: 1.3rem; color: #555577; }
+
+    .empty-state { text-align: center; padding: 3rem; color: #555577; }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+
+    .toast-notification {
+      position: fixed; top: 20px; left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      padding: 1rem 2rem; border-radius: 12px; font-weight: 700;
+      font-family: 'Cairo', sans-serif; z-index: 9999; transition: transform 0.3s ease;
+    }
+    .toast-notification.show { transform: translateX(-50%) translateY(0); }
+    .toast-success { background: #4ecca3; color: #fff; }
+    .toast-error { background: #e74c3c; color: #fff; }
+
+    .settings-row { display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap; }
+    .settings-row .field { flex: 1; min-width: 120px; }
+    .settings-row label { font-size: 0.85rem; color: #b8b8d0; font-weight: 700; display: block; margin-bottom: 0.3rem; }
+    .settings-row input, .settings-row textarea {
+      width: 100%; padding: 0.7rem 1rem; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
+      color: #fff; font-size: 1rem; font-family: 'Cairo', sans-serif;
+    }
+    .settings-row input:focus, .settings-row textarea:focus { outline: none; border-color: #ffd700; }
+    .settings-row textarea { resize: vertical; min-height: 80px; }
+
+    /* Counter management */
+    .counter-list { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1rem; }
+    .counter-chip {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 1rem; border-radius: 10px; font-weight: 700;
+      color: #fff; font-size: 0.9rem;
+    }
+    .counter-chip .remove {
+      background: rgba(0,0,0,0.3); border: none; color: #fff; width: 22px; height: 22px;
+      border-radius: 50%; cursor: pointer; font-size: 0.8rem; display: flex;
+      align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .counter-chip .remove:hover { background: rgba(231,76,60,0.5); }
+    .add-counter-row { display: flex; gap: 0.5rem; }
+    .add-counter-row input {
+      flex: 1; padding: 0.6rem 1rem; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
+      color: #fff; font-size: 0.95rem; font-family: 'Cairo', sans-serif;
+    }
+    .add-counter-row input:focus { outline: none; border-color: #ffd700; }
+
+    @media (max-width: 992px) {
+      .sidebar { width: 100%; height: auto; position: relative; border-left: none; border-bottom: 1px solid rgba(255,215,0,0.15); }
+      .main-content { margin-right: 0; }
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast-notification"></div>
+
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <h2>جامعة اللوتس</h2>
+      <p>إدارة شئون الطلاب</p>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="#counters" class="active"><span class="icon">&#128188;</span> حالة المكاتب</a></li>
+      <li><a href="#settings"><span class="icon">&#9881;</span> الإعدادات</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <h1>جامعة اللوتس - إدارة شئون الطلاب</h1>
+      <p>لوحة التحكم</p>
+    </div>
+
+    <div class="section-card" id="counters">
+      <div class="section-header"><h3>حالة المكاتب الحالية</h3></div>
+      <div class="stats-grid" id="countersGrid"></div>
+    </div>
+
+    <div class="section-card" id="settings">
+      <div class="section-header"><h3>&#9881; الإعدادات</h3></div>
+
+      <!-- Number Range + Reset -->
+      <div class="settings-row">
+        <div class="field">
+          <label>بداية النطاق (رقم أول)</label>
+          <input type="number" id="cfgRangeStart" min="1" placeholder="1">
+        </div>
+        <div class="field">
+          <label>نهاية النطاق (رقم آخر)</label>
+          <input type="number" id="cfgRangeEnd" min="1" placeholder="100">
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn-save" onclick="saveRange()">حفظ النطاق</button>
+          <button class="btn-reset" onclick="resetNumbers()">&#8634; تصفير الأرقام</button>
+        </div>
+      </div>
+
+      <!-- Auto Reset -->
+      <div class="settings-row" style="margin-top:1rem;">
+        <div class="field" style="max-width:300px;">
+          <label>إعادة تعيين تلقائية يومياً بعد الساعة</label>
+          <select id="cfgAutoResetHour" style="width:100%;padding:0.7rem 1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:1rem;font-family:'Cairo',sans-serif;">
+            <option value="0">12:00 AM (منتصف الليل)</option>
+            <option value="1">1:00 AM</option>
+            <option value="2">2:00 AM</option>
+            <option value="3">3:00 AM</option>
+            <option value="4">4:00 AM</option>
+            <option value="5">5:00 AM</option>
+            <option value="6">6:00 AM</option>
+            <option value="7">7:00 AM</option>
+            <option value="8">8:00 AM</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn-save" onclick="saveAutoReset()">حفظ</button>
+        </div>
+      </div>
+
+      <!-- Counters Management -->
+      <div style="margin-top:1.5rem;margin-bottom:1rem;">
+        <label style="font-size:0.95rem;color:#ffd700;font-weight:800;display:block;margin-bottom:0.8rem;">&#128188; المكاتب المتاحة</label>
+        <div class="counter-list" id="counterList"></div>
+        <div class="add-counter-row">
+          <input type="text" id="newCounterName" placeholder="اسم المكتب الجديد (مثال: قبول)">
+          <button class="btn-save" onclick="addCounter()">إضافة مكتب</button>
+        </div>
+      </div>
+
+      <!-- Announcements -->
+      <div class="settings-row">
+        <div class="field">
+          <label>الإعلان المُعلَن (يظهر في شاشة العرض)</label>
+          <textarea id="cfgAnnouncement" placeholder="أدخل نص الإعلان..."></textarea>
+        </div>
+        <div>
+          <button class="btn-save" onclick="saveAnnouncement()">حفظ الإعلان</button>
+        </div>
+      </div>
+
+      <!-- Designer Name -->
+      <div class="settings-row" style="margin-top:1rem;">
+        <div class="field">
+          <label>اسم المصمم (يظهر اسفل شاشة العرض)</label>
+          <input type="text" id="cfgDesignerName" placeholder="اسم المصمم...">
+        </div>
+        <div>
+          <button class="btn-save" onclick="saveDesignerName()">حفظ</button>
+        </div>
+      </div>
+
+      <!-- Display Theme -->
+      <div class="settings-row" style="margin-top:1rem;">
+        <div class="field" style="max-width:300px;">
+          <label>سمة شاشة العرض</label>
+          <select id="cfgDisplayTheme" style="width:100%;padding:0.7rem 1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:1rem;font-family:'Cairo',sans-serif;" onchange="previewTheme(this.value)">
+            <option value="gold">كلاسيك ذهبي</option>
+            <option value="blue">أزرق كوني</option>
+            <option value="red">أحمر ناري</option>
+            <option value="neon">نيون سايبر</option>
+            <option value="green">أخضر طبيعي</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;" id="themeSwatches"></div>
+        <div>
+          <button class="btn-save" onclick="saveTheme()">حفظ السمة</button>
+        </div>
+      </div>
+
+      <!-- Display Layout -->
+      <div class="settings-row" style="margin-top:1rem;">
+        <div class="field" style="max-width:300px;">
+          <label>شكل شاشة العرض</label>
+          <select id="cfgDisplayLayout" style="width:100%;padding:0.7rem 1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:1rem;font-family:'Cairo',sans-serif;">
+            <option value="classic">كلاسيكي - جانبي</option>
+            <option value="centered">مركزي - عمودي</option>
+            <option value="wide">عرضي - أفقي</option>
+            <option value="minimal">بسيط - أنيق</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn-save" onclick="saveLayout()">حفظ الشكل</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let countersConfig = {};
+    let countersData = {};
+    const COUNTER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#16a085','#c0392b'];
+
+    function renderCounterStatus() {
+      const grid = document.getElementById('countersGrid');
+      let html = '';
+      Object.keys(countersConfig).forEach(id => {
+        const info = countersData[id] || countersData[String(id)];
+        const isBusy = info && info.status === 'busy' && info.number > 0;
+        const name = countersConfig[id] || 'المكتب ' + id;
+        html += `
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1.2rem;text-align:center;position:relative;overflow:hidden;">
+            <div style="position:absolute;top:0;right:0;width:4px;height:100%;background:${isBusy?'#ffd700':'#4ecca3'};"></div>
+            <div style="font-size:1.2rem;font-weight:900;color:${isBusy?'#ffd700':'#4ecca3'};margin-bottom:0.3rem;">${name}</div>
+            <div style="font-size:0.85rem;color:${isBusy?'#ffd700':'#4ecca3'};font-weight:700;margin-bottom:0.2rem;">
+              ${isBusy?'مشغول':'متاح'}
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:${isBusy?'#ffd700':'#333355'};">
+              ${isBusy?info.number:'-'}
+            </div>
+          </div>
+        `;
+      });
+      grid.innerHTML = html || '<div class="empty-state"><p>لا يوجد مكاتب مسجلة</p></div>';
+    }
+
+    db.ref('counters').on('value', snap => { countersData = snap.val() || {}; renderCounterStatus(); });
+    db.ref('settings/counters').on('value', snap => { countersConfig = snap.val() || {}; renderCounterStatus(); renderCounterList(); });
+
+    db.ref('settings/numberStart').on('value', snap => {
+      document.getElementById('cfgRangeStart').value = snap.val() || '';
+    });
+    db.ref('settings/numberEnd').on('value', snap => {
+      document.getElementById('cfgRangeEnd').value = snap.val() || '';
+    });
+    db.ref('settings/announcements').on('value', snap => {
+      document.getElementById('cfgAnnouncement').value = snap.val() || '';
+    });
+    db.ref('settings/designerName').on('value', snap => {
+      document.getElementById('cfgDesignerName').value = snap.val() || '';
+    });
+    db.ref('settings/autoResetHour').on('value', snap => {
+      const h = snap.val();
+      document.getElementById('cfgAutoResetHour').value = h !== null ? h : '0';
+    });
+
+    function saveRange() {
+      const s = parseInt(document.getElementById('cfgRangeStart').value);
+      const e = parseInt(document.getElementById('cfgRangeEnd').value);
+      if (!s || !e || s < 1 || e < s) {
+        showToast('يرجى إدخال نطاق صحيح', 'error');
+        return;
+      }
+      db.ref('settings').update({ numberStart: s, numberEnd: e }).then(() => {
+        showToast('تم حفظ النطاق: ' + s + ' - ' + e, 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function resetNumbers() {
+      if (!confirm('هل تريد تصفير الأرقام والبدء من جديد؟')) return;
+      if (!confirm('تأكيد: سيتم مسح كل الأرقام الحالية')) return;
+
+      Promise.all([
+        db.ref('settings/numberStart').once('value'),
+        db.ref('settings/numberEnd').once('value')
+      ]).then(([snapS, snapE]) => {
+        const s = snapS.val() || 1;
+        const e = snapE.val() || 100;
+        const updates = {
+          'tokens/lastNumber': 0,
+          'currentCall/number': 0, 'currentCall/counter': 0,
+          'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+          'tokens/waitingList': null
+        };
+        Object.keys(countersConfig).forEach(id => {
+          updates['counters/' + id] = { number: 0, status: 'idle' };
+        });
+        db.ref().update(updates).then(() => {
+          const listUpdates = {};
+          for (let i = s; i <= e; i++) {
+            listUpdates['tokens/waitingList/r' + i] = i;
+          }
+          listUpdates['tokens/lastNumber'] = e;
+          return db.ref().update(listUpdates);
+        }).then(() => {
+          showToast('تم التصفير والبدء من جديد: ' + s + ' - ' + e, 'success');
+        });
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function saveAutoReset() {
+      const hour = document.getElementById('cfgAutoResetHour').value;
+      db.ref('settings/autoResetHour').set(parseInt(hour)).then(() => {
+        showToast('تم حفظ وقت إعادة التعيين التلقائي', 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function saveDesignerName() {
+      const name = document.getElementById('cfgDesignerName').value.trim();
+      db.ref('settings/designerName').set(name || null).then(() => {
+        showToast('تم حفظ اسم المصمم', 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    /* Auto reset check */
+    (function checkAutoReset() {
+      db.ref('settings/autoResetHour').once('value', snapH => {
+        db.ref('settings/lastAutoResetDate').once('value', snapD => {
+          const hour = snapH.val();
+          const lastDate = snapD.val();
+          if (hour === null) return;
+          const now = new Date();
+          const today = now.toISOString().slice(0, 10);
+          if (now.getHours() >= hour && lastDate !== today) {
+            db.ref('settings/lastAutoResetDate').set(today);
+            db.ref('settings/numberStart').once('value').then(sS => {
+              db.ref('settings/numberEnd').once('value').then(sE => {
+                const s = sS.val() || 1;
+                const e = sE.val() || 100;
+                const updates = {
+                  'tokens/lastNumber': 0,
+                  'currentCall/number': 0, 'currentCall/counter': 0,
+                  'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+                  'tokens/waitingList': null
+                };
+                Object.keys(countersConfig).forEach(id => {
+                  updates['counters/' + id] = { number: 0, status: 'idle' };
+                });
+                db.ref().update(updates).then(() => {
+                  const listUpdates = {};
+                  for (let i = s; i <= e; i++) {
+                    listUpdates['tokens/waitingList/r' + i] = i;
+                  }
+                  listUpdates['tokens/lastNumber'] = e;
+                  db.ref().update(listUpdates);
+                });
+              });
+            });
+          }
+        });
+      });
+    })();
+
+    /* Counter Management */
+    function renderCounterList() {
+      const container = document.getElementById('counterList');
+      const keys = Object.keys(countersConfig);
+      if (keys.length === 0) {
+        container.innerHTML = '<span style="color:#8888aa;font-size:0.9rem;">لا يوجد مكاتب - أضف مكتب جديد</span>';
+        return;
+      }
+      let html = '';
+      keys.forEach((id, i) => {
+        const color = COUNTER_COLORS[i % COUNTER_COLORS.length];
+        html += `<div class="counter-chip" style="background:${color};">
+          <span>${countersConfig[id]}</span>
+          <button class="remove" onclick="removeCounter('${id}')" title="حذف">&times;</button>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function addCounter() {
+      const name = document.getElementById('newCounterName').value.trim();
+      if (!name) { showToast('أدخل اسم المكتب', 'error'); return; }
+
+      const keys = Object.keys(countersConfig);
+      const nextId = String(keys.length + 1);
+      const data = {};
+      data['settings/counters/' + nextId] = name;
+      data['counters/' + nextId] = { number: 0, status: 'idle' };
+
+      db.ref().update(data).then(() => {
+        document.getElementById('newCounterName').value = '';
+        showToast('تم إضافة المكتب: ' + name, 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function removeCounter(id) {
+      if (!confirm('هل تريد حذف المكتب (' + countersConfig[id] + ')؟')) return;
+      const updates = {};
+      updates['settings/counters/' + id] = null;
+      updates['counters/' + id] = null;
+      db.ref().update(updates).then(() => {
+        showToast('تم حذف المكتب', 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function saveAnnouncement() {
+      const txt = document.getElementById('cfgAnnouncement').value.trim();
+      db.ref('settings/announcements').set(txt || null).then(() => {
+        showToast('تم حفظ الإعلان', 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast-notification toast-' + type + ' show';
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    /* Theme Management */
+    const THEME_COLORS = {
+      gold:  { primary:'#ffd700', secondary:'#4ecca3', bg1:'#05050f' },
+      blue:  { primary:'#00bfff', secondary:'#7b68ee', bg1:'#050a18' },
+      red:   { primary:'#ff4444', secondary:'#ff8c00', bg1:'#0f0505' },
+      neon:  { primary:'#ff00ff', secondary:'#00ffff', bg1:'#050510' },
+      green: { primary:'#00e676', secondary:'#69f0ae', bg1:'#050f05' }
+    };
+    const THEME_NAMES_AR = { gold:'كلاسيك ذهبي', blue:'أزرق كوني', red:'أحمر ناري', neon:'نيون سايبر', green:'أخضر طبيعي' };
+
+    function renderThemeSwatches() {
+      const container = document.getElementById('themeSwatches');
+      let html = '';
+      Object.keys(THEME_COLORS).forEach(id => {
+        const c = THEME_COLORS[id];
+        html += `<div onclick="selectTheme('${id}')" style="cursor:pointer;width:42px;height:42px;border-radius:10px;background:${c.primary};border:3px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;position:relative;" title="${THEME_NAMES_AR[id]}">
+          <div style="width:12px;height:12px;border-radius:50%;background:${c.secondary};position:absolute;bottom:2px;right:2px;border:1px solid ${c.primary};"></div>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function selectTheme(id) {
+      document.getElementById('cfgDisplayTheme').value = id;
+      previewTheme(id);
+    }
+
+    function previewTheme(id) {
+      const c = THEME_COLORS[id];
+      if (!c) return;
+      document.body.style.background = c.bg1;
+      const els = document.querySelectorAll('.sidebar-menu a.active, .btn-save');
+      els.forEach(el => { el.style.background = c.primary + '22'; el.style.color = c.primary; });
+    }
+
+    function saveTheme() {
+      const theme = document.getElementById('cfgDisplayTheme').value;
+      db.ref('settings/displayTheme').set(theme).then(() => {
+        showToast('تم حفظ السمة: ' + THEME_NAMES_AR[theme], 'success');
+        document.body.style.background = '';
+        const els = document.querySelectorAll('.sidebar-menu a.active, .btn-save');
+        els.forEach(el => { el.style.background = ''; el.style.color = ''; });
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    db.ref('settings/displayTheme').on('value', snap => {
+      const t = snap.val() || 'gold';
+      document.getElementById('cfgDisplayTheme').value = t;
+    });
+
+    function saveLayout() {
+      const layout = document.getElementById('cfgDisplayLayout').value;
+      db.ref('settings/displayLayout').set(layout).then(() => {
+        showToast('تم حفظ شكل الشاشة', 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    db.ref('settings/displayLayout').on('value', snap => {
+      document.getElementById('cfgDisplayLayout').value = snap.val() || 'classic';
+    });
+
+    renderThemeSwatches();
+
+    document.querySelectorAll('.sidebar-menu a').forEach(link => {
+      link.addEventListener('click', function () {
+        document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

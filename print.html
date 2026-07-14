@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إصدار التذاكر</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #fff; overflow: hidden;
+    }
+    .main-container { text-align: center; padding: 2rem; max-width: 600px; width: 100%; }
+    .header-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.3); }
+    .header-subtitle { font-size: 1.1rem; color: #b8b8d0; margin-bottom: 2.5rem; }
+
+    .get-number-btn {
+      width: 280px; height: 280px; border-radius: 50%;
+      border: 4px solid #ffd700;
+      background: linear-gradient(145deg, #1a1a3e, #2d2b55);
+      color: #ffd700; font-size: 2.2rem; font-weight: 800;
+      font-family: 'Cairo', sans-serif; cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 40px rgba(255,215,0,0.2), inset 0 0 40px rgba(255,215,0,0.05);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+      margin: 0 auto;
+    }
+    .get-number-btn:hover { transform: scale(1.05); box-shadow: 0 0 60px rgba(255,215,0,0.4), inset 0 0 60px rgba(255,215,0,0.1); background: linear-gradient(145deg, #2d2b55, #3d3b65); }
+    .get-number-btn:active { transform: scale(0.98); }
+    .get-number-btn .icon { font-size: 4rem; }
+    .get-number-btn .text { font-size: 1.8rem; }
+    .get-number-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .result-display { display: none; animation: fadeInUp 0.5s ease; }
+    .result-display.show { display: block; }
+    .result-number { font-size: 8rem; font-weight: 900; color: #ffd700; text-shadow: 0 0 30px rgba(255,215,0,0.5); line-height: 1; margin: 1rem 0; }
+    .result-label { font-size: 1.5rem; color: #b8b8d0; margin-bottom: 1rem; }
+    .result-message { font-size: 1.2rem; color: #4ecca3; margin-bottom: 2rem; }
+
+    .new-ticket-btn {
+      background: linear-gradient(135deg, #4ecca3, #36b37e); border: none; color: #fff;
+      font-size: 1.3rem; font-weight: 700; font-family: 'Cairo', sans-serif;
+      padding: 1rem 3rem; border-radius: 50px; cursor: pointer; transition: all 0.3s ease;
+    }
+    .new-ticket-btn:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(78,204,163,0.4); }
+
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 40px rgba(255,215,0,0.2)} 50%{box-shadow:0 0 60px rgba(255,215,0,0.5)} }
+    .pulse-animation { animation: pulse 2s ease-in-out infinite; }
+
+    .custom-toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+      background: #e74c3c; color: #fff; padding: 1rem 2rem; border-radius: 10px;
+      font-weight: 600; z-index: 9999; transition: transform 0.3s ease;
+    }
+    .custom-toast.show { transform: translateX(-50%) translateY(0); }
+    .range-display { margin-top: 1rem; font-size: 0.85rem; color: #6666aa; }
+  </style>
+</head>
+<body>
+  <div id="toast" class="custom-toast"></div>
+
+  <div class="main-container">
+    <h1 class="header-title">جامعة اللوتس</h1>
+    <p class="header-subtitle">إدارة شئون الطلاب</p>
+
+    <div id="getNumberSection">
+      <button id="getNumberBtn" class="get-number-btn pulse-animation" onclick="getNumber()">
+        <span class="icon">+</span>
+        <span class="text">احصل على رقم</span>
+      </button>
+      <div class="range-display" id="rangeDisplay"></div>
+    </div>
+
+    <div id="resultDisplay" class="result-display">
+      <p class="result-label">رقم التذكرة الخاص بك</p>
+      <div id="resultNumber" class="result-number">--</div>
+      <p class="result-message">في انتظار مناداة رقمك</p>
+      <button class="new-ticket-btn" onclick="resetForNewTicket()">الحصول على رقم جديد</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let isProcessing = false;
+    let numberStart = null;
+    let numberEnd = null;
+
+    db.ref('settings/numberStart').on('value', snap => {
+      numberStart = snap.val();
+      updateRangeDisplay();
+    });
+    db.ref('settings/numberEnd').on('value', snap => {
+      numberEnd = snap.val();
+      updateRangeDisplay();
+    });
+
+    function updateRangeDisplay() {
+      const el = document.getElementById('rangeDisplay');
+      if (numberStart !== null && numberEnd !== null) {
+        el.textContent = 'النطاق: ' + numberStart + ' - ' + numberEnd;
+      } else {
+        el.textContent = '';
+      }
+    }
+
+    function getNumber() {
+      if (isProcessing) return;
+      isProcessing = true;
+      const btn = document.getElementById('getNumberBtn');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
+      const lastNumberRef = db.ref('tokens/lastNumber');
+      lastNumberRef.transaction(function(currentValue) {
+        let next = (currentValue || 0) + 1;
+        if (numberStart !== null && numberEnd !== null && next > numberEnd) {
+          next = numberStart;
+        }
+        return next;
+      }, function(error, committed, snapshot) {
+        if (error) {
+          console.error('Firebase error:', error);
+          showToast('حدث خطأ، يرجى المحاولة مرة أخرى');
+          resetButton();
+          return;
+        }
+        if (committed) {
+          const newNumber = snapshot.val();
+          db.ref('tokens/waitingList').push(newNumber).then(function() {
+            showResult(newNumber);
+          }).catch(function(err) {
+            console.error('Push error:', err);
+            showResult(newNumber);
+          });
+        } else {
+          resetButton();
+        }
+      });
+    }
+
+    function showResult(number) {
+      document.getElementById('getNumberSection').style.display = 'none';
+      document.getElementById('resultNumber').textContent = number;
+      document.getElementById('resultDisplay').classList.add('show');
+    }
+
+    function resetForNewTicket() {
+      document.getElementById('resultDisplay').classList.remove('show');
+      document.getElementById('getNumberSection').style.display = 'block';
+      resetButton();
+    }
+
+    function resetButton() {
+      isProcessing = false;
+      const btn = document.getElementById('getNumberBtn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(function() { toast.classList.remove('show'); }, 3000);
+    }
+  </script>
+</body>
+</html>

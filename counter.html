@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>المكتب</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); min-height: 100vh; color: #fff; }
+
+    .navbar-custom {
+      background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,215,0,0.2);
+      padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .navbar-custom .brand { font-size: 1.2rem; font-weight: 800; color: #ffd700; }
+    .navbar-custom .change-btn {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: #8888aa; padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer;
+      font-family: 'Cairo', sans-serif; font-weight: 700; font-size: 0.9rem; transition: all 0.2s;
+    }
+    .navbar-custom .change-btn:hover { background: rgba(255,215,0,0.1); color: #ffd700; }
+
+    /* Selector */
+    .selector-screen { padding: 2rem; text-align: center; max-width: 500px; margin: 2rem auto; }
+    .selector-screen h2 { font-size: 1.6rem; font-weight: 800; color: #ffd700; margin-bottom: 0.5rem; }
+    .selector-screen p { color: #8888aa; margin-bottom: 2rem; font-size: 1rem; }
+    .counter-list-select { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+    .cl-item {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      padding: 1.2rem 1rem; border-radius: 50%; width: 110px; height: 110px;
+      justify-content: center; gap: 0.3rem; cursor: pointer;
+      transition: all 0.3s ease; border: 2px solid transparent; position: relative; overflow: hidden;
+    }
+    .cl-item::before { content:'';position:absolute;inset:4px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;opacity:0.2;transition:all 0.5s; }
+    .cl-item:hover { transform: scale(1.08); }
+    .cl-item:hover::before { opacity:0.5;animation:clSpin 3s linear infinite; }
+    @keyframes clSpin { to{transform:rotate(360deg)} }
+    .cl-item .cl-badge {
+      width: 0; height: 0; padding: 0; border-radius: 0;
+      display: none; align-items: center; justify-content: center;
+      font-size: 0; font-weight: 900; color: #fff; flex-shrink: 0;
+    }
+    .cl-item .cl-name { font-size: 0.9rem; font-weight: 700; line-height: 1.2; }
+    .cl-item .cl-sub { font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+
+    /* Main UI */
+    .counter-info {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 1.5rem; margin: 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .counter-badge {
+      width: 60px; height: 60px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 900; color: #fff; flex-shrink: 0;
+    }
+    .counter-details h3 { font-size: 1.2rem; font-weight: 700; margin: 0; }
+    .counter-details p { margin: 0; color: #8888aa; font-size: 0.9rem; }
+
+    .main-content { padding: 1.5rem; }
+
+    .current-call-card {
+      background: rgba(255,255,255,0.05); border: 2px solid rgba(255,215,0,0.3);
+      border-radius: 20px; padding: 2rem; text-align: center;
+      margin-bottom: 1.5rem; min-height: 200px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .current-call-card.serving { border-color: rgba(78,204,163,0.5); }
+    .current-call-card.stopped { border-color: rgba(231,76,60,0.5); }
+    .current-call-card .label { font-size: 1.2rem; color: #8888aa; margin-bottom: 0.5rem; }
+    .current-call-card .number { font-size: 6rem; font-weight: 900; color: #ffd700; line-height: 1; text-shadow: 0 0 30px rgba(255,215,0,0.3); }
+    .current-call-card.serving .number { color: #4ecca3; text-shadow: 0 0 30px rgba(78,204,163,0.3); }
+    .current-call-card.stopped .number { color: #e74c3c; text-shadow: 0 0 30px rgba(231,76,60,0.3); }
+    .current-call-card .status { font-size: 1rem; color: #666688; margin-top: 0.5rem; }
+    .current-call-card.stopped .status { color: #e74c3c; }
+
+    .action-buttons { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+
+    .btn-main {
+      flex: 1; border: none; color: #fff; font-size: 1.3rem; font-weight: 700;
+      font-family: 'Cairo', sans-serif; padding: 1.2rem 2rem; border-radius: 16px;
+      cursor: pointer; transition: all 0.3s ease;
+      display: flex; align-items: center; justify-content: center; gap: 0.8rem;
+    }
+    .btn-main:hover { transform: translateY(-2px); }
+    .btn-main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-call { background: linear-gradient(135deg, #4ecca3, #36b37e); }
+    .btn-call:hover { box-shadow: 0 8px 25px rgba(78,204,163,0.4); }
+    .btn-end { background: linear-gradient(135deg, #ffd700, #e6b800); color: #0a0a23; }
+    .btn-end:hover { box-shadow: 0 8px 25px rgba(255,215,0,0.4); }
+    .btn-active { background: linear-gradient(135deg, #4ecca3, #36b37e); color: #fff; }
+    .btn-active:hover { box-shadow: 0 8px 25px rgba(78,204,163,0.4); }
+    .btn-transfer { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+    .btn-transfer:hover { box-shadow: 0 8px 25px rgba(155,89,182,0.4); }
+
+    .stats-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 150px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+      padding: 1.2rem; text-align: center;
+    }
+    .stat-card .stat-value { font-size: 2.5rem; font-weight: 900; color: #ffd700; line-height: 1; }
+    .stat-card .stat-label { font-size: 0.9rem; color: #8888aa; margin-top: 0.3rem; }
+
+    .toast-notification {
+      position: fixed; top: 20px; left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      padding: 1rem 2rem; border-radius: 12px; font-weight: 700;
+      font-family: 'Cairo', sans-serif; z-index: 9999; transition: transform 0.3s ease;
+    }
+    .toast-notification.show { transform: translateX(-50%) translateY(0); }
+    .toast-success { background: #4ecca3; color: #fff; }
+    .toast-warning { background: #f39c12; color: #fff; }
+    .toast-error { background: #e74c3c; color: #fff; }
+
+    .tm-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 200; display: none; align-items: center; justify-content: center;
+    }
+    .tm-backdrop.show { display: flex; }
+    .tm-box {
+      background: #1a1a3e; border: 1px solid rgba(255,215,0,0.15); border-radius: 20px;
+      padding: 2rem; width: 420px; max-width: 95vw; color: #fff; text-align: center;
+    }
+    .tm-box h3 { font-size: 1.2rem; font-weight: 800; color: #ffd700; margin-bottom: 1.5rem; }
+    .tm-box .current-num { font-size: 3rem; font-weight: 900; color: #4ecca3; margin-bottom: 1rem; }
+    .tm-box .arrow { font-size: 1.5rem; color: #8888aa; margin-bottom: 1rem; }
+    .tm-counter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+    .tm-counter {
+      border-radius: 12px; padding: 1rem; cursor: pointer; border: 2px solid transparent;
+      transition: all 0.2s; font-weight: 800; font-size: 1rem; color: #fff;
+    }
+    .tm-counter:hover { transform: scale(1.05); border-color: rgba(255,255,255,0.4); }
+    .tm-counter.selected { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+
+    .tm-actions { display: flex; gap: 0.8rem; }
+    .tm-actions button { flex: 1; padding: 0.7rem; border: none; border-radius: 10px; font-family: 'Cairo', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
+    .tm-btn-confirm { background: linear-gradient(135deg, #9b59b6, #8e44ad); color: #fff; }
+    .tm-btn-cancel { background: rgba(255,255,255,0.08); color: #aaa; cursor: pointer; }
+
+    @media(max-width:480px){
+      .counter-list-select { gap:0.7rem; }
+      .cl-item { width:90px;height:90px; }
+      .cl-item .cl-name { font-size:0.75rem; }
+      .cl-item .cl-sub { font-size:0.6rem; }
+      .counter-info { margin:1rem;padding:1rem;flex-direction:column;text-align:center; }
+      .main-content { padding:1rem; }
+      .current-call-card .number { font-size:4rem; }
+      .action-buttons { gap:0.6rem; }
+      .btn-main { font-size:1.1rem;padding:1rem 1.2rem;border-radius:14px; }
+      .navbar-custom { padding:0.8rem 1rem; }
+      .navbar-custom .brand { font-size:1rem; }
+      .tm-counter-grid { grid-template-columns:repeat(3,1fr);gap:0.5rem; }
+      .tm-box { padding:1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast-notification"></div>
+
+  <div class="navbar-custom">
+    <div class="brand">جامعة اللوتس - إدارة شئون الطلاب</div>
+    <button class="change-btn" id="changeBtn" style="display:none;" onclick="changeCounter()">&#8644; تغيير المكتب</button>
+  </div>
+
+  <!-- SELECTOR -->
+  <div class="selector-screen" id="selectorScreen">
+    <h2>اختر المكتب</h2>
+    <p>حدد المكتب الذي تعمل به</p>
+    <div class="counter-list-select" id="counterListContainer">
+      <p style="color:#8888aa;">جاري تحميل المكاتب...</p>
+    </div>
+  </div>
+
+  <!-- MAIN UI -->
+  <div id="mainUI" style="display:none;">
+    <div class="counter-info">
+      <div class="counter-badge" id="counterBadge">1</div>
+      <div class="counter-details">
+        <h3 id="counterTitle">المكتب</h3>
+        <p>جاهز لاستقبال المراجعين</p>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="current-call-card" id="currentCallCard">
+        <div class="label">الرقم الحالي في المكتب</div>
+        <div class="number" id="currentNumber">--</div>
+        <div class="status" id="currentStatus">لم يتم استدعاء أي رقم بعد</div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn-main btn-call" id="callBtn" onclick="callNext()">
+          <span style="font-size:1.5rem;">&#9654;</span> استدعاء التالي
+        </button>
+        <button class="btn-main btn-end" id="endBtn" onclick="endService()">
+          &#10004; متوقف
+        </button>
+        <button class="btn-main btn-transfer" id="transferBtn" onclick="openTransfer()" disabled>
+          &#8644; تحويل لمكتب آخر
+        </button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="waitingCount">0</div>
+          <div class="stat-label">في قائمة الانتظار</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="lastCalledNumber">--</div>
+          <div class="stat-label">آخر رقم تم استدعاؤه</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSFER MODAL -->
+  <div class="tm-backdrop" id="transferModal">
+    <div class="tm-box">
+      <h3>&#8644; تحويل لمكتب آخر</h3>
+      <div class="current-num" id="tmCurrentNum">--</div>
+      <div class="arrow">&#8595;</div>
+      <div class="tm-counter-grid" id="tmGrid"></div>
+      <div class="tm-actions">
+        <button class="tm-btn-cancel" onclick="closeTransfer()">إلغاء</button>
+        <button class="tm-btn-confirm" onclick="confirmTransfer()" id="tmConfirmBtn">تحويل</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let currentCounter = null;
+    let currentCounterName = '';
+    let currentCallData = null;
+    let transferTarget = null;
+    let countersConfig = {};
+    const COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#16a085','#c0392b'];
+
+    /* Load counters from Firebase */
+    db.ref('settings/counters').on('value', snap => {
+      countersConfig = snap.val() || {};
+      const saved = localStorage.getItem('counterNumber');
+      if (saved && countersConfig[saved]) {
+        currentCounter = saved;
+        currentCounterName = countersConfig[saved];
+        showMainUI();
+      } else {
+        renderSelector();
+      }
+    });
+
+    function renderSelector() {
+      const container = document.getElementById('counterListContainer');
+      const keys = Object.keys(countersConfig);
+      if (keys.length === 0) {
+        container.innerHTML = '<p style="color:#f39c12;">لا يوجد مكاتب مسجلة - أضف مكاتب من لوحة التحكم</p>';
+        return;
+      }
+      let html = '';
+      keys.forEach((id, i) => {
+        const color = COLORS[i % COLORS.length];
+        html += `<div class="cl-item" style="background:linear-gradient(135deg,${color}dd,${color}99);" onclick="selectCounter('${id}')">
+          <div class="cl-badge" style="background:rgba(0,0,0,0.2);">${countersConfig[id].substring(0,2)}</div>
+          <div>
+            <div class="cl-name">${countersConfig[id]}</div>
+            <div class="cl-sub">المكتب رقم ${id}</div>
+          </div>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function selectCounter(id) {
+      currentCounter = id;
+      currentCounterName = countersConfig[id] || 'المكتب ' + id;
+      localStorage.setItem('counterNumber', id);
+      showMainUI();
+      showToast('تم تحديد: ' + currentCounterName, 'success');
+    }
+
+    function changeCounter() {
+      document.getElementById('selectorScreen').style.display = 'block';
+      document.getElementById('mainUI').style.display = 'none';
+      document.getElementById('changeBtn').style.display = 'none';
+      currentCounter = null;
+      renderSelector();
+    }
+
+    function showMainUI() {
+      document.getElementById('selectorScreen').style.display = 'none';
+      document.getElementById('mainUI').style.display = 'block';
+      document.getElementById('changeBtn').style.display = 'inline-block';
+      document.getElementById('counterBadge').textContent = currentCounterName.substring(0, 2);
+      const idx = Object.keys(countersConfig).indexOf(currentCounter);
+      document.getElementById('counterBadge').style.background = COLORS[idx >= 0 ? idx % COLORS.length : 0];
+      document.getElementById('counterTitle').textContent = currentCounterName;
+      setupListeners();
+    }
+
+    function setupListeners() {
+      db.ref('tokens/waitingList').on('value', (snapshot) => {
+        document.getElementById('waitingCount').textContent = snapshot.numChildren();
+      });
+
+      db.ref('counters/' + currentCounter).on('value', (snapshot) => {
+        const data = snapshot.val();
+        const card = document.getElementById('currentCallCard');
+        const endBtn = document.getElementById('endBtn');
+        if (data && data.status === 'busy' && data.number > 0) {
+          currentCallData = { number: data.number, counter: currentCounter };
+          document.getElementById('currentNumber').textContent = data.number;
+          card.classList.add('serving');
+          card.classList.remove('stopped');
+          document.getElementById('currentStatus').textContent = 'في خدمة هذا المكتب';
+          endBtn.disabled = false;
+          endBtn.innerHTML = '&#10004; متوقف';
+          endBtn.className = 'btn-main btn-end';
+          document.getElementById('transferBtn').disabled = false;
+        } else if (data && data.status === 'stopped') {
+          currentCallData = null;
+          document.getElementById('currentNumber').textContent = '--';
+          card.classList.remove('serving');
+          card.classList.add('stopped');
+          document.getElementById('currentStatus').textContent = 'المكتب متوقف';
+          endBtn.disabled = false;
+          endBtn.innerHTML = '&#9654; نشط';
+          endBtn.className = 'btn-main btn-active';
+          document.getElementById('transferBtn').disabled = true;
+        } else {
+          currentCallData = null;
+          document.getElementById('currentNumber').textContent = '--';
+          card.classList.remove('serving');
+          card.classList.remove('stopped');
+          document.getElementById('currentStatus').textContent = 'لم يتم استدعاء أي رقم بعد';
+          endBtn.disabled = false;
+          endBtn.innerHTML = '&#10004; متوقف';
+          endBtn.className = 'btn-main btn-end';
+          document.getElementById('transferBtn').disabled = true;
+        }
+      });
+
+      db.ref('currentCall').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.number > 0) {
+          document.getElementById('lastCalledNumber').textContent = data.number;
+        }
+      });
+    }
+
+    function callNext(attempt) {
+      const btn = document.getElementById('callBtn');
+      btn.disabled = true;
+      attempt = attempt || 0;
+
+      db.ref('tokens/waitingList').orderByValue().limitToFirst(1).once('value', (snap) => {
+        if (!snap.exists()) {
+          showToast('لا يوجد منتظرين', 'warning');
+          btn.disabled = false;
+          return;
+        }
+
+        const data = snap.val();
+        const key = Object.keys(data)[0];
+        const number = data[key];
+
+        db.ref('tokens/waitingList/' + key).transaction(function(currentValue) {
+          if (currentValue === null) return;
+          return null;
+        }, function(error, committed) {
+          if (!committed || error) {
+            if (attempt < 5) {
+              setTimeout(function() { callNext(attempt + 1); }, 200);
+            } else {
+              showToast('لا يوجد منتظرين حالياً', 'warning');
+              btn.disabled = false;
+            }
+            return;
+          }
+
+          const updates = {};
+          updates['currentCall/number'] = number;
+          updates['currentCall/counter'] = currentCounter;
+          updates['currentCall/timestamp'] = firebase.database.ServerValue.TIMESTAMP;
+          updates['counters/' + currentCounter + '/number'] = number;
+          updates['counters/' + currentCounter + '/status'] = 'busy';
+
+          db.ref().update(updates).then(() => {
+            showToast('تم استدعاء الرقم ' + number, 'success');
+            btn.disabled = false;
+          }).catch(() => {
+            showToast('حدث خطأ', 'error');
+            btn.disabled = false;
+          });
+        });
+      });
+    }
+
+    function endService() {
+      const card = document.getElementById('currentCallCard');
+      const isStopped = card.classList.contains('stopped');
+
+      if (isStopped) {
+        const updates = {};
+        updates['counters/' + currentCounter + '/status'] = 'idle';
+        db.ref().update(updates).then(() => {
+          showToast('تم تفعيل المكتب', 'success');
+        });
+      } else {
+        const updates = {};
+        updates['counters/' + currentCounter + '/number'] = 0;
+        updates['counters/' + currentCounter + '/status'] = 'stopped';
+        db.ref('currentCall').once('value', snap => {
+          const cc = snap.val();
+          if (cc && String(cc.counter) === String(currentCounter)) {
+            updates['currentCall/number'] = 0;
+            updates['currentCall/counter'] = currentCounter;
+            updates['currentCall/timestamp'] = firebase.database.ServerValue.TIMESTAMP;
+          }
+          db.ref().update(updates).then(() => {
+            showToast('تم إيقاف المكتب', 'success');
+          });
+        });
+      }
+    }
+
+    function openTransfer() {
+      if (!currentCallData || !currentCallData.number) {
+        showToast('لا يوجد رقم حالي للتحويل', 'warning');
+        return;
+      }
+      transferTarget = null;
+      document.getElementById('tmCurrentNum').textContent = currentCallData.number;
+      let grid = '';
+      const keys = Object.keys(countersConfig);
+      keys.forEach((id, i) => {
+        if (String(id) === String(currentCounter)) return;
+        const color = COLORS[i % COLORS.length];
+        grid += `<div class="tm-counter" id="tmc-${id}" style="background:linear-gradient(135deg,${color}dd,${color}99);" onclick="pickTransfer('${id}')">${countersConfig[id]}</div>`;
+      });
+      document.getElementById('tmGrid').innerHTML = grid;
+      document.getElementById('tmConfirmBtn').disabled = true;
+      document.getElementById('transferModal').classList.add('show');
+    }
+
+    function closeTransfer() { document.getElementById('transferModal').classList.remove('show'); }
+
+    function pickTransfer(id) {
+      transferTarget = id;
+      document.querySelectorAll('.tm-counter').forEach(el => el.classList.remove('selected'));
+      document.getElementById('tmc-' + id).classList.add('selected');
+      document.getElementById('tmConfirmBtn').disabled = false;
+    }
+
+    function confirmTransfer() {
+      if (!transferTarget || !currentCallData) return;
+      const number = currentCallData.number;
+      const updates = {};
+      updates['counters/' + currentCounter + '/number'] = 0;
+      updates['counters/' + currentCounter + '/status'] = 'idle';
+      updates['counters/' + transferTarget + '/number'] = number;
+      updates['counters/' + transferTarget + '/status'] = 'busy';
+      updates['currentCall/number'] = number;
+      updates['currentCall/counter'] = transferTarget;
+      updates['currentCall/timestamp'] = firebase.database.ServerValue.TIMESTAMP;
+      db.ref().update(updates).then(() => {
+        closeTransfer();
+        const tName = countersConfig[transferTarget] || ('المكتب ' + transferTarget);
+        showToast('تم تحويل الرقم ' + number + ' إلى ' + tName, 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast-notification toast-' + type + ' show';
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>

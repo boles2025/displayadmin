@@ -361,18 +361,19 @@
       ]).then(([snapS, snapE]) => {
         const s = snapS.val() || 1;
         const e = snapE.val() || 100;
+        const waitingList = {};
+        for (let i = s; i <= e; i++) {
+          waitingList['r' + i] = i;
+        }
         const updates = {
           'tokens/lastNumber': e,
           'currentCall/number': 0, 'currentCall/counter': 0,
           'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-          'tokens/waitingList': null
+          'tokens/waitingList': waitingList
         };
         Object.keys(countersConfig).forEach(id => {
           updates['counters/' + id] = { number: 0, status: 'idle' };
         });
-        for (let i = s; i <= e; i++) {
-          updates['tokens/waitingList/r' + i] = i;
-        }
         db.ref().update(updates).then(() => {
           showToast('تم التصفير والبدء من جديد: ' + s + ' - ' + e, 'success');
         });
@@ -403,24 +404,25 @@
           const now = new Date();
           const today = now.toISOString().slice(0, 10);
           if (now.getHours() >= hour && lastDate !== today) {
-            db.ref('settings/numberStart').once('value').then(sS => {
-              db.ref('settings/numberEnd').once('value').then(sE => {
-                const s = sS.val() || 1;
-                const e = sE.val() || 100;
-                const updates = {
-                  'tokens/lastNumber': e,
-                  'currentCall/number': 0, 'currentCall/counter': 0,
-                  'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-                  'tokens/waitingList': null
-                };
-                Object.keys(countersConfig).forEach(id => {
-                  updates['counters/' + id] = { number: 0, status: 'idle' };
-                });
-                for (let i = s; i <= e; i++) {
-                  updates['tokens/waitingList/r' + i] = i;
-                }
-                updates['settings/lastAutoResetDate'] = today;
-                db.ref().update(updates);
+              db.ref('settings/numberStart').once('value').then(sS => {
+                db.ref('settings/numberEnd').once('value').then(sE => {
+                  const s = sS.val() || 1;
+                  const e = sE.val() || 100;
+                  const waitingList = {};
+                  for (let i = s; i <= e; i++) {
+                    waitingList['r' + i] = i;
+                  }
+                  const updates = {
+                    'tokens/lastNumber': e,
+                    'currentCall/number': 0, 'currentCall/counter': 0,
+                    'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+                    'tokens/waitingList': waitingList
+                  };
+                  Object.keys(countersConfig).forEach(id => {
+                    updates['counters/' + id] = { number: 0, status: 'idle' };
+                  });
+                  updates['settings/lastAutoResetDate'] = today;
+                  db.ref().update(updates);
               });
             });
           }
@@ -451,8 +453,8 @@
       const name = document.getElementById('newCounterName').value.trim();
       if (!name) { showToast('أدخل اسم المكتب', 'error'); return; }
 
-      const keys = Object.keys(countersConfig);
-      const nextId = String(keys.length + 1);
+      const keys = Object.keys(countersConfig).map(Number);
+      const nextId = String(keys.length ? Math.max(...keys) + 1 : 1);
       const data = {};
       data['settings/counters/' + nextId] = name;
       data['counters/' + nextId] = { number: 0, status: 'idle' };

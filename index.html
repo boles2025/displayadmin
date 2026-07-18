@@ -174,6 +174,24 @@
       <p>لوحة التحكم</p>
     </div>
 
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+      <div class="stat-card gold">
+        <div class="stat-icon">&#128424;</div>
+        <div class="stat-number" id="totalPrinted">0</div>
+        <div class="stat-label">إجمالي الأرقام المطبوعة</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-icon">&#128203;</div>
+        <div class="stat-number" id="waitingTotal">0</div>
+        <div class="stat-label">في الانتظار</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon">&#128260;</div>
+        <div class="stat-number" id="totalCalled">0</div>
+        <div class="stat-label">تم المناداة</div>
+      </div>
+    </div>
+
     <div class="section-card" id="counters">
       <div class="section-header"><h3>حالة المكاتب الحالية</h3></div>
       <div class="stats-grid" id="countersGrid"></div>
@@ -322,6 +340,18 @@
     db.ref('counters').on('value', snap => { countersData = snap.val() || {}; renderCounterStatus(); });
     db.ref('settings/counters').on('value', snap => { countersConfig = snap.val() || {}; renderCounterStatus(); renderCounterList(); });
 
+    const elPrinted = document.getElementById('totalPrinted');
+    const elWaiting = document.getElementById('waitingTotal');
+    const elCalled = document.getElementById('totalCalled');
+    let lastNum = 0, waitNum = 0;
+    function updateStats() {
+      elPrinted.textContent = lastNum || '0';
+      elWaiting.textContent = waitNum;
+      elCalled.textContent = Math.max(0, (lastNum || 0) - waitNum);
+    }
+    db.ref('tokens/lastNumber').on('value', snap => { lastNum = snap.val() || 0; updateStats(); });
+    db.ref('tokens/waitingList').on('value', snap => { waitNum = snap.numChildren(); updateStats(); });
+
     db.ref('settings/numberStart').on('value', snap => {
       document.getElementById('cfgRangeStart').value = snap.val() || '';
     });
@@ -353,30 +383,20 @@
 
     function resetNumbers() {
       if (!confirm('هل تريد تصفير الأرقام والبدء من جديد؟')) return;
-      if (!confirm('تأكيد: سيتم مسح كل الأرقام الحالية')) return;
+      if (!confirm('تأكيد: سيتم مسح كل الأرقام الحالية وإعادة الطباعة من 1')) return;
 
-      Promise.all([
-        db.ref('settings/numberStart').once('value'),
-        db.ref('settings/numberEnd').once('value')
-      ]).then(([snapS, snapE]) => {
-        const s = snapS.val() || 1;
-        const e = snapE.val() || 100;
-        const waitingList = {};
-        for (let i = s; i <= e; i++) {
-          waitingList['r' + i] = i;
-        }
-        const updates = {
-          'tokens/lastNumber': e,
-          'currentCall/number': 0, 'currentCall/counter': 0,
-          'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-          'tokens/waitingList': waitingList
-        };
-        Object.keys(countersConfig).forEach(id => {
-          updates['counters/' + id] = { number: 0, status: 'idle' };
-        });
-        db.ref().update(updates).then(() => {
-          showToast('تم التصفير والبدء من جديد: ' + s + ' - ' + e, 'success');
-        });
+      const updates = {
+        'tokens/lastNumber': 0,
+        'settings/lastPrintedNumber': null,
+        'currentCall/number': 0, 'currentCall/counter': 0,
+        'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+        'tokens/waitingList': null
+      };
+      Object.keys(countersConfig).forEach(id => {
+        updates['counters/' + id] = { number: 0, status: 'idle' };
+      });
+      db.ref().update(updates).then(() => {
+        showToast('تم التصفير — الطباعة ستبدأ من رقم 1', 'success');
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
 
@@ -404,27 +424,18 @@
           const now = new Date();
           const today = now.toISOString().slice(0, 10);
           if (now.getHours() >= hour && lastDate !== today) {
-              db.ref('settings/numberStart').once('value').then(sS => {
-                db.ref('settings/numberEnd').once('value').then(sE => {
-                  const s = sS.val() || 1;
-                  const e = sE.val() || 100;
-                  const waitingList = {};
-                  for (let i = s; i <= e; i++) {
-                    waitingList['r' + i] = i;
-                  }
-                  const updates = {
-                    'tokens/lastNumber': e,
-                    'currentCall/number': 0, 'currentCall/counter': 0,
-                    'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-                    'tokens/waitingList': waitingList
-                  };
-                  Object.keys(countersConfig).forEach(id => {
-                    updates['counters/' + id] = { number: 0, status: 'idle' };
-                  });
-                  updates['settings/lastAutoResetDate'] = today;
-                  db.ref().update(updates);
-              });
+            const updates = {
+              'tokens/lastNumber': 0,
+              'settings/lastPrintedNumber': null,
+              'currentCall/number': 0, 'currentCall/counter': 0,
+              'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+              'tokens/waitingList': null
+            };
+            Object.keys(countersConfig).forEach(id => {
+              updates['counters/' + id] = { number: 0, status: 'idle' };
             });
+            updates['settings/lastAutoResetDate'] = today;
+            db.ref().update(updates);
           }
         });
       });

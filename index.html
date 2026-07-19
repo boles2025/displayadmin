@@ -174,21 +174,42 @@
       <p>لوحة التحكم</p>
     </div>
 
-    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
-      <div class="stat-card gold">
-        <div class="stat-icon">&#128424;</div>
-        <div class="stat-number" id="totalPrinted">0</div>
-        <div class="stat-label">إجمالي الأرقام المطبوعة</div>
+    <div class="section-card" id="global-stats">
+      <div class="section-header"><h3>إحصائيات عامة</h3></div>
+      <div class="stats-grid" id="globalStatsGrid">
+        <div class="stat-card gold">
+          <div class="stat-icon">&#128424;</div>
+          <div class="stat-number" id="adminTotalPrinted">0</div>
+          <div class="stat-label">إجمالي التذاكر المطبوعة</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128101;</div>
+          <div class="stat-number" id="adminTotalWaiting">0</div>
+          <div class="stat-label">منتظرين في القائمة</div>
+        </div>
       </div>
-      <div class="stat-card blue">
-        <div class="stat-icon">&#128203;</div>
-        <div class="stat-number" id="waitingTotal">0</div>
-        <div class="stat-label">في الانتظار</div>
+    </div>
+
+    <div class="section-card" id="mode">
+      <div class="section-header"><h3>&#128241; وضع تشغيل الأرقام</h3></div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <label style="flex:1;min-width:240px;cursor:pointer;background:rgba(255,215,0,0.06);border:2px solid rgba(255,215,0,0.25);border-radius:14px;padding:1.2rem;display:flex;gap:1rem;align-items:flex-start;">
+          <input type="radio" name="numMode" value="manual" id="modeManual" style="margin-top:0.4rem;width:18px;height:18px;accent-color:#ffd700;">
+          <div>
+            <div style="font-size:1.05rem;font-weight:800;color:#ffd700;">يدوي (بدون تقيد)</div>
+            <div style="font-size:0.85rem;color:#8888aa;margin-top:0.3rem;line-height:1.5;">الأرقام مفتوحة بدون تقيد بالطباعة، والموظف يستدعي التالي مباشرة دون انتظار طباعة تذكرة.</div>
+          </div>
+        </label>
+        <label style="flex:1;min-width:240px;cursor:pointer;background:rgba(78,204,163,0.06);border:2px solid rgba(78,204,163,0.25);border-radius:14px;padding:1.2rem;display:flex;gap:1rem;align-items:flex-start;">
+          <input type="radio" name="numMode" value="print" id="modePrint" style="margin-top:0.4rem;width:18px;height:18px;accent-color:#4ecca3;">
+          <div>
+            <div style="font-size:1.05rem;font-weight:800;color:#4ecca3;">مرتبط بالطباعة</div>
+            <div style="font-size:0.85rem;color:#8888aa;margin-top:0.3rem;line-height:1.5;">الأرقام المستدعاة محدودة بما تمت طباعته فقط (طبعت لحد 4 يُستدعى لحد 4).</div>
+          </div>
+        </label>
       </div>
-      <div class="stat-card red">
-        <div class="stat-icon">&#128260;</div>
-        <div class="stat-number" id="totalCalled">0</div>
-        <div class="stat-label">تم المناداة</div>
+      <div style="margin-top:1rem;">
+        <button class="btn-save" onclick="saveMode()">حفظ الوضع</button>
       </div>
     </div>
 
@@ -203,15 +224,11 @@
       <!-- Number Range + Reset -->
       <div class="settings-row">
         <div class="field">
-          <label>بداية النطاق (رقم أول)</label>
+          <label>البدء من رقم</label>
           <input type="number" id="cfgRangeStart" min="1" placeholder="1">
         </div>
-        <div class="field">
-          <label>نهاية النطاق (رقم آخر)</label>
-          <input type="number" id="cfgRangeEnd" min="1" placeholder="100">
-        </div>
         <div style="display:flex;gap:0.5rem;">
-          <button class="btn-save" onclick="saveRange()">حفظ النطاق</button>
+          <button class="btn-save" onclick="saveRange()">حفظ الرقم</button>
           <button class="btn-reset" onclick="resetNumbers()">&#8634; تصفير الأرقام</button>
         </div>
       </div>
@@ -340,23 +357,20 @@
     db.ref('counters').on('value', snap => { countersData = snap.val() || {}; renderCounterStatus(); });
     db.ref('settings/counters').on('value', snap => { countersConfig = snap.val() || {}; renderCounterStatus(); renderCounterList(); });
 
-    const elPrinted = document.getElementById('totalPrinted');
-    const elWaiting = document.getElementById('waitingTotal');
-    const elCalled = document.getElementById('totalCalled');
-    let lastNum = 0, waitNum = 0;
-    function updateStats() {
-      elPrinted.textContent = lastNum || '0';
-      elWaiting.textContent = waitNum;
-      elCalled.textContent = Math.max(0, (lastNum || 0) - waitNum);
-    }
-    db.ref('tokens/lastNumber').on('value', snap => { lastNum = snap.val() || 0; updateStats(); });
-    db.ref('tokens/waitingList').on('value', snap => { waitNum = snap.numChildren(); updateStats(); });
+    db.ref('stats/totalPrintedToday').on('value', snap => {
+      document.getElementById('adminTotalPrinted').textContent = snap.val() || 0;
+    });
+    db.ref('tokens/waitingList').on('value', snap => {
+      document.getElementById('adminTotalWaiting').textContent = snap.numChildren();
+    });
 
     db.ref('settings/numberStart').on('value', snap => {
       document.getElementById('cfgRangeStart').value = snap.val() || '';
     });
-    db.ref('settings/numberEnd').on('value', snap => {
-      document.getElementById('cfgRangeEnd').value = snap.val() || '';
+    db.ref('settings/mode').on('value', snap => {
+      const mode = snap.val() || 'print';
+      document.getElementById('modeManual').checked = (mode === 'manual');
+      document.getElementById('modePrint').checked = (mode === 'print');
     });
     db.ref('settings/announcements').on('value', snap => {
       document.getElementById('cfgAnnouncement').value = snap.val() || '';
@@ -369,34 +383,47 @@
       document.getElementById('cfgAutoResetHour').value = h !== null ? h : '0';
     });
 
+    function saveMode() {
+      const manual = document.getElementById('modeManual').checked;
+      const mode = manual ? 'manual' : 'print';
+      db.ref('settings/mode').set(mode).then(() => {
+        showToast('تم حفظ وضع الأرقام: ' + (manual ? 'يدوي' : 'مرتبط بالطباعة'), 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
     function saveRange() {
       const s = parseInt(document.getElementById('cfgRangeStart').value);
-      const e = parseInt(document.getElementById('cfgRangeEnd').value);
-      if (!s || !e || s < 1 || e < s) {
-        showToast('يرجى إدخال نطاق صحيح', 'error');
+      if (!s || s < 1) {
+        showToast('يرجى إدخال رقم صحيح', 'error');
         return;
       }
-      db.ref('settings').update({ numberStart: s, numberEnd: e }).then(() => {
-        showToast('تم حفظ النطاق: ' + s + ' - ' + e, 'success');
+      db.ref('settings/numberStart').set(s).then(() => {
+        showToast('تم حفظ رقم البداية: ' + s, 'success');
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
 
     function resetNumbers() {
       if (!confirm('هل تريد تصفير الأرقام والبدء من جديد؟')) return;
-      if (!confirm('تأكيد: سيتم مسح كل الأرقام الحالية وإعادة الطباعة من 1')) return;
+      if (!confirm('تأكيد: سيتم مسح كل الأرقام الحالية')) return;
 
-      const updates = {
-        'tokens/lastNumber': 0,
-        'settings/lastPrintedNumber': null,
-        'currentCall/number': 0, 'currentCall/counter': 0,
-        'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-        'tokens/waitingList': null
-      };
-      Object.keys(countersConfig).forEach(id => {
-        updates['counters/' + id] = { number: 0, status: 'idle' };
-      });
-      db.ref().update(updates).then(() => {
-        showToast('تم التصفير — الطباعة ستبدأ من رقم 1', 'success');
+      Promise.all([
+        db.ref('settings/numberStart').once('value')
+      ]).then(([snapS]) => {
+        const s = snapS.val() || 1;
+        
+        const updates = {
+          'tokens/lastNumber': s - 1,
+          'stats/totalPrintedToday': 0,
+          'currentCall/number': 0, 'currentCall/counter': 0,
+          'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+          'tokens/waitingList': null
+        };
+        Object.keys(countersConfig).forEach(id => {
+          updates['counters/' + id] = { number: 0, status: 'idle' };
+        });
+        db.ref().update(updates).then(() => {
+          showToast('تم التصفير والبدء من جديد (أول رقم سيكون ' + s + ')', 'success');
+        });
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
 
@@ -424,18 +451,22 @@
           const now = new Date();
           const today = now.toISOString().slice(0, 10);
           if (now.getHours() >= hour && lastDate !== today) {
-            const updates = {
-              'tokens/lastNumber': 0,
-              'settings/lastPrintedNumber': null,
-              'currentCall/number': 0, 'currentCall/counter': 0,
-              'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-              'tokens/waitingList': null
-            };
-            Object.keys(countersConfig).forEach(id => {
-              updates['counters/' + id] = { number: 0, status: 'idle' };
-            });
-            updates['settings/lastAutoResetDate'] = today;
-            db.ref().update(updates);
+              db.ref('settings/numberStart').once('value').then(sS => {
+                  const s = sS.val() || 1;
+                  
+                  const updates = {
+                    'tokens/lastNumber': s - 1,
+                    'stats/totalPrintedToday': 0,
+                    'currentCall/number': 0, 'currentCall/counter': 0,
+                    'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
+                    'tokens/waitingList': null
+                  };
+                  Object.keys(countersConfig).forEach(id => {
+                    updates['counters/' + id] = { number: 0, status: 'idle' };
+                  });
+                  updates['settings/lastAutoResetDate'] = today;
+                  db.ref().update(updates);
+              });
           }
         });
       });

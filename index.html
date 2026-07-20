@@ -254,6 +254,17 @@
         </div>
       </div>
 
+      <!-- Call Delay -->
+      <div class="settings-row">
+        <div class="field" style="max-width:200px;">
+          <label>المدة بين الأرقام (بالثواني)</label>
+          <input type="number" id="cfgCallDelay" min="1" max="60" placeholder="10">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn-save" onclick="saveCallDelay()">حفظ</button>
+        </div>
+      </div>
+
       <!-- Counters Management -->
       <div style="margin-top:1.5rem;margin-bottom:1rem;">
         <label style="font-size:0.95rem;color:#ffd700;font-weight:800;display:block;margin-bottom:0.8rem;">&#128188; المكاتب المتاحة</label>
@@ -329,7 +340,7 @@
   <script>
     let countersConfig = {};
     let countersData = {};
-    const COUNTER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#16a085','#c0392b'];
+    const COUNTER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#ff6b6b','#16a085','#c0392b'];
 
     function renderCounterStatus() {
       const grid = document.getElementById('countersGrid');
@@ -382,6 +393,9 @@
       const h = snap.val();
       document.getElementById('cfgAutoResetHour').value = h !== null ? h : '0';
     });
+    db.ref('settings/callDelay').on('value', snap => {
+      document.getElementById('cfgCallDelay').value = snap.val() || '10';
+    });
 
     function saveMode() {
       const manual = document.getElementById('modeManual').checked;
@@ -414,12 +428,12 @@
         const updates = {
           'tokens/lastNumber': s - 1,
           'stats/totalPrintedToday': 0,
-          'currentCall/number': 0, 'currentCall/counter': 0,
+          'currentCall/number': 0, 'currentCall/counter': 0, 'currentCall/lockTS': 0,
           'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
           'tokens/waitingList': null
         };
         Object.keys(countersConfig).forEach(id => {
-          updates['counters/' + id] = { number: 0, status: 'idle' };
+          updates['counters/' + id] = { number: 0, status: 'idle', served: 0 };
         });
         db.ref().update(updates).then(() => {
           showToast('تم التصفير والبدء من جديد (أول رقم سيكون ' + s + ')', 'success');
@@ -441,6 +455,14 @@
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
 
+    function saveCallDelay() {
+      const d = parseInt(document.getElementById('cfgCallDelay').value);
+      if (!d || d < 1) { showToast('أدخل رقم صحيح', 'error'); return; }
+      db.ref('settings/callDelay').set(d).then(() => {
+        showToast('تم حفظ المدة: ' + d + ' ثوانٍ', 'success');
+      }).catch(() => showToast('حدث خطأ', 'error'));
+    }
+
     /* Auto reset check */
     (function checkAutoReset() {
       db.ref('settings/autoResetHour').once('value', snapH => {
@@ -457,12 +479,12 @@
                   const updates = {
                     'tokens/lastNumber': s - 1,
                     'stats/totalPrintedToday': 0,
-                    'currentCall/number': 0, 'currentCall/counter': 0,
+                    'currentCall/number': 0, 'currentCall/counter': 0, 'currentCall/lockTS': 0,
                     'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
                     'tokens/waitingList': null
                   };
                   Object.keys(countersConfig).forEach(id => {
-                    updates['counters/' + id] = { number: 0, status: 'idle' };
+                    updates['counters/' + id] = { number: 0, status: 'idle', served: 0 };
                   });
                   updates['settings/lastAutoResetDate'] = today;
                   db.ref().update(updates);
@@ -485,10 +507,21 @@
         const color = COUNTER_COLORS[i % COUNTER_COLORS.length];
         html += `<div class="counter-chip" style="background:${color};">
           <span>${countersConfig[id]}</span>
+          <button class="remove" onclick="editCounter('${id}')" title="تعديل" style="background:rgba(0,0,0,0.3);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">&#9998;</button>
           <button class="remove" onclick="removeCounter('${id}')" title="حذف">&times;</button>
         </div>`;
       });
       container.innerHTML = html;
+    }
+
+    function editCounter(id) {
+      const currentName = countersConfig[id];
+      const newName = prompt('أدخل الاسم الجديد للمكتب:', currentName);
+      if (newName && newName.trim() && newName.trim() !== currentName) {
+        db.ref('settings/counters/' + id).set(newName.trim()).then(() => {
+          showToast('تم تعديل اسم المكتب', 'success');
+        }).catch(() => showToast('حدث خطأ', 'error'));
+      }
     }
 
     function addCounter() {
@@ -499,7 +532,7 @@
       const nextId = String(keys.length ? Math.max(...keys) + 1 : 1);
       const data = {};
       data['settings/counters/' + nextId] = name;
-      data['counters/' + nextId] = { number: 0, status: 'idle' };
+      data['counters/' + nextId] = { number: 0, status: 'idle', served: 0 };
 
       db.ref().update(data).then(() => {
         document.getElementById('newCounterName').value = '';

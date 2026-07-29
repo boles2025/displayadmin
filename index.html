@@ -233,27 +233,6 @@
         </div>
       </div>
 
-      <!-- Auto Reset -->
-      <div class="settings-row" style="margin-top:1rem;">
-        <div class="field" style="max-width:300px;">
-          <label>إعادة تعيين تلقائية يومياً بعد الساعة</label>
-          <select id="cfgAutoResetHour" style="width:100%;padding:0.7rem 1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:1rem;font-family:'Cairo',sans-serif;">
-            <option value="0">12:00 AM (منتصف الليل)</option>
-            <option value="1">1:00 AM</option>
-            <option value="2">2:00 AM</option>
-            <option value="3">3:00 AM</option>
-            <option value="4">4:00 AM</option>
-            <option value="5">5:00 AM</option>
-            <option value="6">6:00 AM</option>
-            <option value="7">7:00 AM</option>
-            <option value="8">8:00 AM</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <button class="btn-save" onclick="saveAutoReset()">حفظ</button>
-        </div>
-      </div>
-
       <!-- Call Delay -->
       <div class="settings-row">
         <div class="field" style="max-width:200px;">
@@ -368,15 +347,41 @@
     db.ref('counters').on('value', snap => { countersData = snap.val() || {}; renderCounterStatus(); });
     db.ref('settings/counters').on('value', snap => { countersConfig = snap.val() || {}; renderCounterStatus(); renderCounterList(); });
 
-    db.ref('stats/totalPrintedToday').on('value', snap => {
-      document.getElementById('adminTotalPrinted').textContent = snap.val() || 0;
-    });
-    db.ref('tokens/waitingList').on('value', snap => {
-      document.getElementById('adminTotalWaiting').textContent = snap.numChildren();
-    });
+    let currentStartNum = 1;
+    let currentLastNum = 0;
+    let currentStatsTotal = 0;
 
     db.ref('settings/numberStart').on('value', snap => {
+      currentStartNum = snap.val() || 1;
       document.getElementById('cfgRangeStart').value = snap.val() || '';
+      updateTotalPrintedDisplay();
+    });
+
+    db.ref('stats/totalPrintedToday').on('value', snap => {
+      currentStatsTotal = snap.val() || 0;
+      updateTotalPrintedDisplay();
+    });
+
+    db.ref('tokens/lastNumber').on('value', snap => {
+      const val = snap.val();
+      currentLastNum = (val !== null && val !== undefined) ? parseInt(val) : 0;
+      updateTotalPrintedDisplay();
+    });
+
+    function updateTotalPrintedDisplay() {
+      let totalFromLastNum = 0;
+      if (currentLastNum >= currentStartNum) {
+        totalFromLastNum = currentLastNum - currentStartNum + 1;
+      } else if (currentLastNum > 0 && currentLastNum < currentStartNum) {
+        totalFromLastNum = currentLastNum;
+      }
+      let finalTotal = Math.max(currentStatsTotal, totalFromLastNum);
+      if (isNaN(finalTotal)) finalTotal = 0;
+      document.getElementById('adminTotalPrinted').textContent = finalTotal;
+    }
+
+    db.ref('tokens/waitingList').on('value', snap => {
+      document.getElementById('adminTotalWaiting').textContent = snap.numChildren();
     });
     db.ref('settings/mode').on('value', snap => {
       const mode = snap.val() || 'print';
@@ -388,10 +393,6 @@
     });
     db.ref('settings/designerName').on('value', snap => {
       document.getElementById('cfgDesignerName').value = snap.val() || '';
-    });
-    db.ref('settings/autoResetHour').on('value', snap => {
-      const h = snap.val();
-      document.getElementById('cfgAutoResetHour').value = h !== null ? h : '0';
     });
     db.ref('settings/callDelay').on('value', snap => {
       document.getElementById('cfgCallDelay').value = snap.val() || '10';
@@ -416,6 +417,9 @@
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
 
+    // Clear any old numberEnd setting from database if present
+    db.ref('settings/numberEnd').remove();
+
     function resetNumbers() {
       if (!confirm('هل تريد تصفير الأرقام والبدء من جديد؟')) return;
       if (!confirm('تأكيد: سيتم مسح كل الأرقام الحالية')) return;
@@ -430,7 +434,9 @@
           'stats/totalPrintedToday': 0,
           'currentCall/number': 0, 'currentCall/counter': 0, 'currentCall/lockTS': 0,
           'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-          'tokens/waitingList': null
+          'tokens/waitingList': null,
+          'settings/numberEnd': null,
+          'callQueue': null
         };
         Object.keys(countersConfig).forEach(id => {
           updates['counters/' + id] = { number: 0, status: 'idle', served: 0 };
@@ -438,13 +444,6 @@
         db.ref().update(updates).then(() => {
           showToast('تم التصفير والبدء من جديد (أول رقم سيكون ' + s + ')', 'success');
         });
-      }).catch(() => showToast('حدث خطأ', 'error'));
-    }
-
-    function saveAutoReset() {
-      const hour = document.getElementById('cfgAutoResetHour').value;
-      db.ref('settings/autoResetHour').set(parseInt(hour)).then(() => {
-        showToast('تم حفظ وقت إعادة التعيين التلقائي', 'success');
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
 
@@ -462,37 +461,6 @@
         showToast('تم حفظ المدة: ' + d + ' ثوانٍ', 'success');
       }).catch(() => showToast('حدث خطأ', 'error'));
     }
-
-    /* Auto reset check */
-    (function checkAutoReset() {
-      db.ref('settings/autoResetHour').once('value', snapH => {
-        db.ref('settings/lastAutoResetDate').once('value', snapD => {
-          const hour = snapH.val();
-          const lastDate = snapD.val();
-          if (hour === null) return;
-          const now = new Date();
-          const today = now.toISOString().slice(0, 10);
-          if (now.getHours() >= hour && lastDate !== today) {
-              db.ref('settings/numberStart').once('value').then(sS => {
-                  const s = sS.val() || 1;
-                  
-                  const updates = {
-                    'tokens/lastNumber': s - 1,
-                    'stats/totalPrintedToday': 0,
-                    'currentCall/number': 0, 'currentCall/counter': 0, 'currentCall/lockTS': 0,
-                    'currentCall/timestamp': firebase.database.ServerValue.TIMESTAMP,
-                    'tokens/waitingList': null
-                  };
-                  Object.keys(countersConfig).forEach(id => {
-                    updates['counters/' + id] = { number: 0, status: 'idle', served: 0 };
-                  });
-                  updates['settings/lastAutoResetDate'] = today;
-                  db.ref().update(updates);
-              });
-          }
-        });
-      });
-    })();
 
     /* Counter Management */
     function renderCounterList() {
